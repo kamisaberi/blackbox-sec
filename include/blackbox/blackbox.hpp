@@ -48,23 +48,14 @@ namespace blackbox {
  * @brief System-wide status codes for blackbox-sec operations.
  */
 enum class Status : uint32_t {
-    Success                        = 0,
-    ErrOptimizationStagnated       = 1,
-    ErrTrustRegionShrunk           = 2,
-    ErrInvalidSearchBounds         = 3,
-    ErrEvaluatorFailed             = 4,
-    ErrCUDAEvaluationFailed        = 5,
-    ErrInvalidConfig               = 6,
-    ErrUnknown                     = 999
-};
-
-/**
- * @brief Type of derivative-free optimization algorithm used for red-teaming.
- */
-enum class OptimizerType : uint32_t {
-    TuRBO   = 0, // Trust Region Bayesian Optimization
-    CMA_ES  = 1, // Covariance Matrix Adaptation Evolution Strategy
-    BOHB    = 2  // Bayesian Optimization & Hyperband
+    Success                          = 0,
+    ErrOptimizationStagnated         = 1,
+    ErrTrustRegionCollapsed          = 2,
+    ErrTargetEndpointUnreachable     = 3,
+    ErrCUDAEvaluationFailed          = 4,
+    ErrInvalidSearchBounds           = 5,
+    ErrConfigurationParseFailed      = 6,
+    ErrUnknown                       = 999
 };
 
 /**
@@ -72,14 +63,14 @@ enum class OptimizerType : uint32_t {
  */
 [[nodiscard]] constexpr std::string_view status_to_string(Status status) noexcept {
     switch (status) {
-        case Status::Success:                      return "Success: Optimization Iteration Completed";
-        case Status::ErrOptimizationStagnated:     return "Warning: Optimization Search Stagnated in Local Region";
-        case Status::ErrTrustRegionShrunk:         return "Warning: TuRBO Trust Region Shrunk Below Threshold";
-        case Status::ErrInvalidSearchBounds:       return "Error: Invalid Search Bounds or Vector Dimensions";
-        case Status::ErrEvaluatorFailed:           return "Error: Objective Fitness Evaluator Call Failed";
-        case Status::ErrCUDAEvaluationFailed:      return "Error: GPU Parallel CUDA Fitness Evaluation Failed";
-        case Status::ErrInvalidConfig:             return "Error: Invalid Red-Teaming Campaign Configuration";
-        default:                                   return "Error: Unknown Black-Box Optimization Failure";
+        case Status::Success:                      return "Success";
+        case Status::ErrOptimizationStagnated:     return "Warning: Optimization Search Stagnated";
+        case Status::ErrTrustRegionCollapsed:      return "Warning: TuRBO Trust Region Size Collapsed Below Threshold";
+        case Status::ErrTargetEndpointUnreachable: return "Error: Target LLM Endpoint Unreachable or Returned API Error";
+        case Status::ErrCUDAEvaluationFailed:      return "Error: GPU CUDA Batch Fitness Evaluation Kernel Failed";
+        case Status::ErrInvalidSearchBounds:       return "Error: Invalid Search Space Dimensionality or Bounds";
+        case Status::ErrConfigurationParseFailed:  return "Error: Failed to Parse Campaign Configuration File";
+        default:                                   return "Error: Unknown Blackbox Engine Failure";
     }
 }
 
@@ -105,15 +96,28 @@ private:
 };
 
 /**
- * @brief Result payload returned after executing a red-teaming optimization campaign.
+ * @brief Candidate prompt perturbation evaluation result payload.
  */
-struct BLACKBOX_API OptimizationResult {
+struct BLACKBOX_API CandidateEvaluation {
+    size_t candidate_id{0};
+    std::string candidate_prompt;
+    std::vector<double> continuous_vector; // Position in latent search space
+    double fitness_score{0.0};             // Objective fitness F(x) in [0.0, 1.0]
+    bool safety_policy_violated{false};
+    uint32_t query_count{0};
+};
+
+/**
+ * @brief Summary statistics for an optimization campaign run.
+ */
+struct BLACKBOX_API OptimizationSummary {
+    std::string campaign_id;
+    uint32_t total_queries{0};
+    uint32_t total_iterations{0};
+    double best_fitness_score{0.0};
+    bool target_goal_achieved{false};
+    double duration_seconds{0.0};
     std::string best_candidate_prompt;
-    double best_fitness_score{0.0};      // 0.0 (Safe) to 1.0 (Critical Jailbreak Hit)
-    size_t total_evaluations{0};
-    double elapsed_time_ms{0.0};
-    bool target_jailbreak_discovered{false};
-    std::vector<double> best_perturbation_vector;
 };
 
 /**
