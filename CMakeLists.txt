@@ -23,7 +23,7 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Default to Release build type for maximum optimization performance
+# Default to Release build type for maximum optimization throughput
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -37,7 +37,7 @@ if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 80 86 89 90)
 endif()
 
-# Enable aggressive C++ compiler optimizations for parallel matrix search
+# Apply compiler optimizations
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options(
         -O3
@@ -112,7 +112,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmd/blackbox-redteam/main.cpp")
 endif()
 
 # ------------------------------------------------------------------------------
-# 5. Unit Testing Targets
+# 5. Unit & Optimization Testing
 # ------------------------------------------------------------------------------
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
     enable_testing()
